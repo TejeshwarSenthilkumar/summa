@@ -19,10 +19,18 @@ const registerSchema = {
     })
 };
 
-const loginSchema = {
+const sendOtpSchema = {
     body: Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().required()
+        identifier: Joi.string().required(),
+        role: Joi.string().valid('PATIENT', 'DOCTOR', 'PHARMACY', 'NURSE', 'STAFF').required()
+    })
+};
+
+const verifyOtpSchema = {
+    body: Joi.object({
+        identifier: Joi.string().required(),
+        otp: Joi.string().length(6).required(),
+        role: Joi.string().valid('PATIENT', 'DOCTOR', 'PHARMACY', 'NURSE', 'STAFF').required()
     })
 };
 
@@ -85,34 +93,84 @@ router.post('/register', validateRequest(registerSchema), async (req: Request, r
 });
 
 /**
- * POST /api/auth/login
- * Login user
+ * POST /api/auth/send-otp
+ * Send OTP to user (Mock)
  */
-router.post('/login', validateRequest(loginSchema), async (req: Request, res: Response) => {
+router.post('/send-otp', validateRequest(sendOtpSchema), async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { identifier, role } = req.body;
 
-        // Find user
-        const user = await prisma.user.findUnique({
-            where: { email }
+        // Find user by email OR phone
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: identifier },
+                    { phoneNumber: identifier }
+                ],
+                role: role as any
+            }
         });
 
+        // In a real system, we'd send an SMS/Email here.
+        // If the user doesn't exist, we still return "success" to prevent user enumeration,
+        // but for this MVP/Demo, we want to know if it works.
+        if (!user && role !== 'PATIENT') {
+            res.status(404).json({ error: 'User not found in registry' });
+            return;
+        }
+
+        console.log(`[AUTH] OTP 123456 generated for ${identifier} (${role})`);
+
+        res.json({
+            message: 'OTP sent successfully',
+            demoOtp: '123456'
+        });
+    } catch (error) {
+        console.error('OTP Send error:', error);
+        res.status(500).json({ error: 'Failed to send OTP' });
+    }
+});
+
+/**
+ * POST /api/auth/verify-otp
+ * Verify OTP and login
+ */
+router.post('/verify-otp', validateRequest(verifyOtpSchema), async (req: Request, res: Response) => {
+    try {
+        const { identifier, otp, role } = req.body;
+
+        // Mock OTP check
+        if (otp !== '123456') {
+            res.status(401).json({ error: 'Invalid OTP' });
+            return;
+        }
+
+        // Find user
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: identifier },
+                    { phoneNumber: identifier }
+                ],
+                role: role as any
+            }
+        });
+
+        // Auto-create patient if not exists (Lazy registration)
+        if (!user && role === 'PATIENT') {
+            user = await prisma.user.create({
+                data: {
+                    email: identifier.includes('@') ? identifier : `${identifier}@pharmalync.local`,
+                    phoneNumber: identifier.includes('@') ? null : identifier,
+                    role: 'PATIENT' as any,
+                    passwordHash: 'otp-user', // Filler
+                    isActive: true
+                }
+            });
+        }
+
         if (!user) {
-            res.status(401).json({ error: 'Invalid credentials' });
-            return;
-        }
-
-        // Check if user is active
-        if (!user.isActive) {
-            res.status(403).json({ error: 'Account is deactivated' });
-            return;
-        }
-
-        // Verify password
-        const isValid = await authService.verifyPassword(password, user.passwordHash);
-
-        if (!isValid) {
-            res.status(401).json({ error: 'Invalid credentials' });
+            res.status(401).json({ error: 'User not authorized for this role' });
             return;
         }
 
@@ -133,8 +191,8 @@ router.post('/login', validateRequest(loginSchema), async (req: Request, res: Re
             ...tokens
         });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
+        console.error('Verification error:', error);
+        res.status(500).json({ error: 'Verification failed' });
     }
 });
 

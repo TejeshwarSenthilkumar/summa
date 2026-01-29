@@ -33,9 +33,13 @@ const apiClient = async (endpoint, options = {}) => {
 export const api = {
     // Auth
     auth: {
-        login: (email, password) => apiClient('/auth/login', {
+        sendOtp: (identifier, role) => apiClient('/auth/send-otp', {
             method: 'POST',
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ identifier, role }),
+        }),
+        verifyOtp: (identifier, otp, role) => apiClient('/auth/verify-otp', {
+            method: 'POST',
+            body: JSON.stringify({ identifier, otp, role }),
         }),
         register: (userData) => apiClient('/auth/register', {
             method: 'POST',

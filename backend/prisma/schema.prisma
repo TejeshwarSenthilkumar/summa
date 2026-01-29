@@ -13,6 +13,7 @@ datasource db {
 // User Roles Enum
 enum UserRole {
   ADMIN
+  DOCTOR
   NURSE
   STAFF
   PHARMACY
@@ -30,6 +31,7 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
+  phoneNumber  String?  @unique
   role         UserRole
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -129,7 +131,7 @@ model Medicine {
 model Prescription {
   id          String    @id @default(uuid())
   patientId   String
-  issuedBy    String    // User ID (NURSE or ADMIN)
+  issuedBy    String    // User ID (DOCTOR, NURSE or ADMIN)
   dispensed   Boolean   @default(false)
   dispensedAt DateTime?
   dispensedBy String?   // User ID (PHARMACY)

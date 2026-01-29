@@ -11,7 +11,7 @@ import Logo from '@/components/ui/Logo';
 
 const roles = [
     { id: 'patient', label: 'Patient', icon: User, color: 'text-teal-600', bg: 'bg-teal-50', backendRole: 'PATIENT' },
-    { id: 'doctor', label: 'Doctor', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50', backendRole: 'ADMIN' }, // MVP: Admin acts as Doctor
+    { id: 'doctor', label: 'Doctor', icon: Stethoscope, color: 'text-blue-600', bg: 'bg-blue-50', backendRole: 'DOCTOR' },
     { id: 'pharmacist', label: 'Pharmacist', icon: Store, color: 'text-orange-600', bg: 'bg-orange-50', backendRole: 'PHARMACY' },
 ];
 
@@ -24,32 +24,43 @@ const LoginPage = () => {
     const navigate = useNavigate();
     const setAuth = useAuthStore(state => state.setAuth);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (!identifier) {
             if (selectedRole === 'patient') alert("Please enter Mobile Number or Aadhaar");
             else alert("Please enter License ID or Mobile Number");
             return;
         }
-        // Simulate OTP sent for all roles
-        setStep('otp');
+
+        setIsLoading(true);
+        try {
+            const role = roles.find(r => r.id === selectedRole)?.backendRole;
+            await api.auth.sendOtp(identifier, role);
+            setStep('otp');
+        } catch (error) {
+            alert(error.message || 'User not found or role mismatch');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const verifyOtp = () => {
-        if (otp === '123456') { // Mock OTP
-            if (selectedRole === 'patient') {
-                navigate('/patient/dashboard');
-            } else if (selectedRole === 'doctor') {
-                // Mock logic for doctor registration check
-                if (identifier === '9999999999') {
-                    navigate('/doctor/register');
-                } else {
-                    navigate('/doctor/dashboard');
-                }
-            } else if (selectedRole === 'pharmacist') {
-                navigate('/pharmacist/scan');
-            }
-        } else {
-            alert('Invalid OTP. Use 123456');
+    const verifyOtp = async () => {
+        setIsLoading(true);
+        try {
+            const role = roles.find(r => r.id === selectedRole)?.backendRole;
+            const response = await api.auth.verifyOtp(identifier, otp, role);
+
+            setAuth(response.user, response.accessToken);
+
+            // Navigate based on role
+            if (response.user.role === 'PATIENT') navigate('/patient/dashboard');
+            else if (response.user.role === 'DOCTOR') navigate('/doctor/dashboard');
+            else if (response.user.role === 'PHARMACY') navigate('/pharmacist/scan');
+            else navigate('/dashboard');
+
+        } catch (error) {
+            alert(error.message || 'Invalid OTP. Use 123456');
+        } finally {
+            setIsLoading(false);
         }
     };
 
