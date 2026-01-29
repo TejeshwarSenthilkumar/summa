@@ -88,28 +88,6 @@ const PatientDashboard = () => {
                     <DigitalIdentityCard />
                 </motion.div>
 
-                {/* Quick Stats / Highlights with Staggered Entry */}
-                <div className="grid grid-cols-2 gap-4">
-                    <MotionCard delay={0.3} className="bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 border-orange-100 dark:border-slate-800">
-                        <div className="p-4 flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mb-2 shadow-inner">
-                                <Zap size={20} fill="currentColor" />
-                            </div>
-                            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">85%</span>
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Adherence</span>
-                        </div>
-                    </MotionCard>
-                    <MotionCard delay={0.4} className="bg-gradient-to-br from-blue-50 to-white dark:from-slate-900 dark:to-slate-800 border-blue-100 dark:border-slate-800">
-                        <div className="p-4 flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2 shadow-inner">
-                                <Activity size={20} />
-                            </div>
-                            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">Normal</span>
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vitals Status</span>
-                        </div>
-                    </MotionCard>
-                </div>
-
                 {/* Reminders Section */}
                 <div>
                     <div className="flex items-center justify-between mb-4">

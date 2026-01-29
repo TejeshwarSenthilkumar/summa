@@ -48,6 +48,10 @@ const DigitalIdentityCard = () => {
                                 <span className="text-[10px] uppercase opacity-70">Blood Group</span>
                                 <span>O+ Positive</span>
                             </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase opacity-70">Gender</span>
+                                <span>Male</span>
+                            </div>
                         </div>
                     </div>
 

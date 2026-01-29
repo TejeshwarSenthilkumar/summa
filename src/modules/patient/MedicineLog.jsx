@@ -42,7 +42,21 @@ const otcMedicines = [
 
 const MedicineLog = () => {
     const [selectedRx, setSelectedRx] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const filters = ['Date', 'Time', 'Doctor', 'Prescription'];
+
+    // Filter Logic
+    const filteredPrescriptions = prescriptions.filter(rx =>
+        rx.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rx.doctor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rx.medicines.some(med => med.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const filteredOtc = otcMedicines.filter(med =>
+        med.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const hasResults = filteredPrescriptions.length > 0 || filteredOtc.length > 0;
 
     return (
         <PageTransition className="min-h-screen px-4 py-8 max-w-md mx-auto pb-28">
@@ -79,9 +93,19 @@ const MedicineLog = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors group-focus-within:text-teal-600" size={20} />
                     <input
                         type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search medicines..."
-                        className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700 shadow-glass focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all font-medium"
+                        className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700 shadow-glass focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all font-medium"
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
                 <button className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-3.5 rounded-2xl text-slate-500 dark:text-slate-400 border border-white/20 dark:border-slate-700 shadow-glass hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95">
                     <Filter size={20} />
@@ -91,89 +115,108 @@ const MedicineLog = () => {
             {/* Content Area */}
             <div className="space-y-8">
 
-                {/* Prescriptions Section */}
-                <section>
-                    <div className="flex items-center justify-between mb-4 px-1">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prescriptions</h3>
-                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-0 h-5 text-[10px] px-2">
-                            {prescriptions.length} Active
-                        </Badge>
+                {!hasResults && searchQuery ? (
+                    <div className="text-center py-12">
+                        <p className="text-slate-500 dark:text-slate-400">No medicines found matching "{searchQuery}"</p>
+                        <Button
+                            variant="link"
+                            onClick={() => setSearchQuery('')}
+                            className="text-teal-600 dark:text-teal-400 font-bold"
+                        >
+                            Clear Search
+                        </Button>
                     </div>
+                ) : (
+                    <>
+                        {/* Prescriptions Section */}
+                        {filteredPrescriptions.length > 0 && (
+                            <section>
+                                <div className="flex items-center justify-between mb-4 px-1">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Prescriptions</h3>
+                                    <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-0 h-5 text-[10px] px-2">
+                                        {filteredPrescriptions.length} Active
+                                    </Badge>
+                                </div>
 
-                    <div className="space-y-4">
-                        {prescriptions.map((rx, idx) => (
-                            <MotionCard
-                                key={rx.id}
-                                delay={idx * 0.1}
-                                onClick={() => setSelectedRx(rx)}
-                                className="border-0 bg-white dark:bg-slate-900 shadow-soft dark:shadow-none dark:border dark:border-slate-800 rounded-3xl overflow-hidden cursor-pointer group"
-                            >
-                                <div className="p-1">
-                                    {/* Card Header */}
-                                    <div className="p-4 flex justify-between items-start bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl mb-1">
-                                        <div>
-                                            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
-                                                {rx.name}
-                                            </h4>
-                                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                                <span className="flex items-center gap-1"><CalendarClock size={12} /> {rx.date}</span>
-                                                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                                                <span>{rx.doctor}</span>
+                                <div className="space-y-4">
+                                    {filteredPrescriptions.map((rx, idx) => (
+                                        <MotionCard
+                                            key={rx.id}
+                                            delay={idx * 0.1}
+                                            onClick={() => setSelectedRx(rx)}
+                                            className="border-0 bg-white dark:bg-slate-900 shadow-soft dark:shadow-none dark:border dark:border-slate-800 rounded-3xl overflow-hidden cursor-pointer group"
+                                        >
+                                            <div className="p-1">
+                                                {/* Card Header */}
+                                                <div className="p-4 flex justify-between items-start bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl mb-1">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
+                                                            {rx.name}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                                            <span className="flex items-center gap-1"><CalendarClock size={12} /> {rx.date}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                                            <span>{rx.doctor}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm text-slate-400 group-hover:text-teal-600 transition-colors">
+                                                        <ChevronRight size={18} />
+                                                    </div>
+                                                </div>
+
+                                                {/* Meds List Preview */}
+                                                <div className="px-2 pb-2 pt-1 space-y-1">
+                                                    {rx.medicines.map(med => (
+                                                        <div key={med.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors">
+                                                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-sm border border-indigo-100 dark:border-indigo-900/30">
+                                                                <Pill size={18} />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex justify-between items-center mb-0.5">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{med.name}</span>
+                                                                    <Badge variant="outline" className="bg-transparent border-slate-200 dark:border-slate-700 text-xs py-0 h-5 text-slate-500">
+                                                                        x{med.count}
+                                                                    </Badge>
+                                                                </div>
+                                                                <p className="text-xs text-slate-500 font-medium">{med.dosage} • {med.type}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm text-slate-400 group-hover:text-teal-600 transition-colors">
-                                            <ChevronRight size={18} />
-                                        </div>
-                                    </div>
+                                        </MotionCard>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
-                                    {/* Meds List Preview */}
-                                    <div className="px-2 pb-2 pt-1 space-y-1">
-                                        {rx.medicines.map(med => (
-                                            <div key={med.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors">
-                                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-sm border border-indigo-100 dark:border-indigo-900/30">
-                                                    <Pill size={18} />
+                        {/* OTC Section */}
+                        {filteredOtc.length > 0 && (
+                            <section>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-1">Over The Counter</h3>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {filteredOtc.map((med, idx) => (
+                                        <MotionCard
+                                            key={med.id}
+                                            delay={0.3 + (idx * 0.1)}
+                                            className="border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 shadow-sm rounded-2xl backdrop-blur-sm"
+                                        >
+                                            <div className="p-4 flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-orange-100 dark:border-orange-900/30">
+                                                    <Store size={22} />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="flex justify-between items-center mb-0.5">
-                                                        <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{med.name}</span>
-                                                        <Badge variant="outline" className="bg-transparent border-slate-200 dark:border-slate-700 text-xs py-0 h-5 text-slate-500">
-                                                            x{med.count}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 font-medium">{med.dosage} • {med.type}</p>
+                                                    <h4 className="font-bold text-slate-800 dark:text-slate-100">{med.name}</h4>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{med.dosage} • Bought on {med.date}</p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </MotionCard>
+                                    ))}
                                 </div>
-                            </MotionCard>
-                        ))}
-                    </div>
-                </section>
-
-                {/* OTC Section */}
-                <section>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-1">Over The Counter</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                        {otcMedicines.map((med, idx) => (
-                            <MotionCard
-                                key={med.id}
-                                delay={0.3 + (idx * 0.1)}
-                                className="border border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 shadow-sm rounded-2xl backdrop-blur-sm"
-                            >
-                                <div className="p-4 flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-orange-100 dark:border-orange-900/30">
-                                        <Store size={22} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-slate-800 dark:text-slate-100">{med.name}</h4>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{med.dosage} • Bought on {med.date}</p>
-                                    </div>
-                                </div>
-                            </MotionCard>
-                        ))}
-                    </div>
-                </section>
+                            </section>
+                        )}
+                    </>
+                )}
             </div>
 
             {/* Enhanced Modal */}

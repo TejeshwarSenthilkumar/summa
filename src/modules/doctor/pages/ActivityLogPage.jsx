@@ -1,53 +1,56 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import PageTransition from '@/components/ui/PageTransition';
 
 const ActivityLogPage = () => {
-    // Mock Activity Data (Current Week)
-    const logs = [
-        { id: 1, name: "Rahul Deshmukh", diagnosis: "Viral Pyrexia", date: "Today", time: "10:30 AM", status: "Prescribed" },
-        { id: 2, name: "Priya Sharma", diagnosis: "Migraine", date: "Yesterday", time: "04:15 PM", status: "Referred" },
-        { id: 3, name: "Amit Kumar", diagnosis: "General Checkup", date: "28 Jan", time: "11:00 AM", status: "Completed" },
-        { id: 4, name: "Sarah Khan", diagnosis: "Stomach Pain", date: "28 Jan", time: "09:45 AM", status: "Prescribed" },
+    // Mock Data
+    const activities = [
+        { id: 1, patient: "Rahul Deshmukh", diagnosis: "Viral Fever", date: "Jan 24, 2024", time: "10:30 AM", status: "Prescribed" },
+        { id: 2, patient: "Anita Sharma", diagnosis: "Hypertension Check", date: "Jan 24, 2024", time: "11:15 AM", status: "Consultation" },
+        { id: 3, patient: "Vikram Singh", diagnosis: "Migraine", date: "Jan 23, 2024", time: "04:45 PM", status: "Prescribed" },
+        { id: 4, patient: "Sneha Patel", diagnosis: "General Checkup", date: "Jan 23, 2024", time: "05:30 PM", status: "Completed" },
+        { id: 5, patient: "Arjun Kumar", diagnosis: "Asthma Review", date: "Jan 22, 2024", time: "09:00 AM", status: "Prescribed" }
     ];
 
     return (
-        <div className="px-4 py-6 pb-24 space-y-6">
-            <h1 className="text-xl font-bold text-slate-900">Activity Log</h1>
+        <PageTransition className="px-4 py-6 pb-24">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">Activity Log</h1>
 
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
-                <input
-                    type="text"
-                    placeholder="Search patients..."
-                    className="w-full pl-12 pr-4 py-3 rounded-xl bg-white border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-                />
-            </div>
-
-            {/* Logs List */}
-            <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">This Week</h3>
-                {logs.map(log => (
-                    <Card key={log.id} className="p-4 border-0 shadow-sm flex justify-between items-center group hover:bg-slate-50 transition-colors cursor-pointer">
-                        <div>
-                            <h4 className="font-bold text-slate-800">{log.name}</h4>
-                            <p className="text-xs text-slate-500 font-medium">{log.diagnosis}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-xs font-bold text-slate-900">{log.date}</p>
-                            <p className="text-[10px] text-slate-400 mb-1">{log.time}</p>
-                            <Badge variant="outline" className={`text-[10px] py-0 h-5 border-0 ${log.status === 'Prescribed' ? 'bg-green-100 text-green-700' :
-                                    log.status === 'Referred' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'
-                                }`}>
-                                {log.status}
-                            </Badge>
-                        </div>
-                    </Card>
-                ))}
-            </div>
-        </div>
+            <Card className="overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                            <TableHead className="w-[140px] font-semibold text-slate-600 dark:text-slate-400">Patient</TableHead>
+                            <TableHead className="font-semibold text-slate-600 dark:text-slate-400">Diagnosis</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-600 dark:text-slate-400">Date</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {activities.map((activity) => (
+                            <TableRow key={activity.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                <TableCell className="font-medium">
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-900 dark:text-slate-200">{activity.patient}</span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">{activity.status}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-slate-600 dark:text-slate-400">
+                                    {activity.diagnosis}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{activity.date}</span>
+                                        <span className="text-[10px] text-slate-400">{activity.time}</span>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Card>
+        </PageTransition>
     );
 };
 

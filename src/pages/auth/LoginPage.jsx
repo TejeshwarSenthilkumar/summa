@@ -22,20 +22,13 @@ const LoginPage = () => {
     const navigate = useNavigate();
 
     const handleLogin = () => {
-        if (selectedRole === 'patient' || selectedRole === 'doctor') {
-            if (!identifier) {
-                alert(selectedRole === 'patient' ? "Please enter Mobile Number or Aadhaar" : "Please enter Mobile Number or License ID");
-                return;
-            }
-            // Simulate OTP sent
-            setStep('otp');
-        } else {
-            // Direct login for demo for pharmacist
-            const routes = {
-                pharmacist: '/pharmacist/scan'
-            };
-            navigate(routes[selectedRole]);
+        if (!identifier) {
+            if (selectedRole === 'patient') alert("Please enter Mobile Number or Aadhaar");
+            else alert("Please enter License ID or Mobile Number");
+            return;
         }
+        // Simulate OTP sent for all roles
+        setStep('otp');
     };
 
     const verifyOtp = () => {
@@ -43,13 +36,14 @@ const LoginPage = () => {
             if (selectedRole === 'patient') {
                 navigate('/patient/dashboard');
             } else if (selectedRole === 'doctor') {
-                // Mock logic: If identifier is 'new', go to register, else dashboard
-                // For demo simplicity, let's say '9999999999' is a new doctor
+                // Mock logic for doctor registration check
                 if (identifier === '9999999999') {
                     navigate('/doctor/register');
                 } else {
                     navigate('/doctor/dashboard');
                 }
+            } else if (selectedRole === 'pharmacist') {
+                navigate('/pharmacist/scan');
             }
         } else {
             alert('Invalid OTP. Use 123456');
