@@ -26,11 +26,7 @@ const LoginPage = () => {
 
     const handleLogin = async () => {
         if (!identifier) {
-<<<<<<< Updated upstream
             alert(selectedRole === 'patient' ? "Please enter Mobile Number or Aadhaar" : "Please enter Mobile Number or License ID");
-=======
-            alert("Please enter your ID / Mobile");
->>>>>>> Stashed changes
             return;
         }
 
@@ -39,7 +35,6 @@ const LoginPage = () => {
             if (selectedRole === 'patient') {
                 // In a real system, this would trigger an OTP
                 setStep('otp');
-<<<<<<< Updated upstream
             } else if (selectedRole === 'doctor') {
                 // Mock logic: If identifier is '9999999999' is a new doctor (demo from upstream)
                 if (identifier === '9999999999') {
@@ -54,19 +49,6 @@ const LoginPage = () => {
                 const response = await api.auth.login(identifier, 'Password123!');
                 setAuth(response.user, response.accessToken);
                 navigate('/pharmacist/scan');
-=======
-            } else {
-                // Direct login for Pharmacy/Doctor/Admin for MVP
-                // Note: In production, password would be used instead of just License ID
-                const response = await api.auth.login(identifier, 'Password123!'); // Mock password
-                setAuth(response.user, response.accessToken);
-
-                const routes = {
-                    doctor: '/doctor/dashboard',
-                    pharmacist: '/pharmacist/scan'
-                };
-                navigate(routes[selectedRole]);
->>>>>>> Stashed changes
             }
         } catch (error) {
             alert(error.message);
@@ -78,13 +60,7 @@ const LoginPage = () => {
     const verifyOtp = async () => {
         setIsLoading(true);
         try {
-<<<<<<< Updated upstream
             if (otp === '123456') {
-=======
-            // For MVP, we simulate OTP verification that calls a mock auth
-            if (otp === '123456') {
-                // Mock backend call for patient login
->>>>>>> Stashed changes
                 const response = {
                     user: { id: 'p-1', role: 'PATIENT', email: identifier },
                     accessToken: 'mock-token'
