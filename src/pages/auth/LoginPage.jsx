@@ -24,7 +24,7 @@ const LoginPage = () => {
         const routes = {
             patient: '/patient/dashboard',
             doctor: '/doctor/dashboard',
-            pharmacist: '/pharmacist/pos'
+            pharmacist: '/pharmacist/scan'
         };
         navigate(routes[selectedRole]);
     };

@@ -17,6 +17,14 @@ import MedicineLog from './modules/patient/MedicineLog';
 import DoctorDashboard from './modules/doctor';
 import PharmacistDashboard from './modules/pharmacist';
 
+
+// Pharmacist Pages
+import ScanQR from './modules/pharmacist/pages/ScanQR';
+import DispensePage from './modules/pharmacist/pages/DispensePage';
+import Stock from './modules/pharmacist/pages/Stock';
+import HistoryPage from './modules/pharmacist/pages/History';
+import Profile from './modules/pharmacist/pages/Profile';
+
 function App() {
     return (
         <BrowserRouter>
@@ -41,7 +49,12 @@ function App() {
 
                 {/* Pharmacist Routes */}
                 <Route element={<PharmacistLayout />}>
-                    <Route path="/pharmacist/pos" element={<PharmacistDashboard />} />
+                    <Route path="/pharmacist" element={<Navigate to="/pharmacist/scan" replace />} />
+                    <Route path="/pharmacist/scan" element={<ScanQR />} />
+                    <Route path="/pharmacist/dispense" element={<DispensePage />} />
+                    <Route path="/pharmacist/stock" element={<Stock />} />
+                    <Route path="/pharmacist/history" element={<HistoryPage />} />
+                    <Route path="/pharmacist/profile" element={<Profile />} />
                 </Route>
 
                 {/* Fallback */}

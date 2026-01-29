@@ -1,0 +1,398 @@
+
+import React, { useState, useEffect } from 'react';
+import { usePharmacyStore } from '../store';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import {
+    AlertCircle,
+    CheckCircle2,
+    ChevronRight,
+    Minus,
+    Plus,
+    ScanLine,
+    ShoppingCart,
+    Trash2,
+    X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const DispensePage = () => {
+    const navigate = useNavigate();
+    const {
+        inventory,
+        currentPatient,
+        dispenseItem,
+        clearSession
+    } = usePharmacyStore();
+
+    // Session State
+    const [billItems, setBillItems] = useState([]);
+    const [selectedPrescription, setSelectedPrescription] = useState(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanMessage, setScanMessage] = useState('');
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    // Ensure we have a patient (or handle walk-in logic if intended, but requirements say "Redirect to Medical Dispense Page" after Scan)
+    // If no patient is set, redirect back to scan (for safety)
+    useEffect(() => {
+        if (!currentPatient) {
+            // For hackathon demo, maybe we want to allow staying here if implementing 'Guest' checkout?
+            // But requirement said "Scan Patient ID -> Medical Dispense Page".
+            // So if no patient, maybe we just mock one for testing or redirect?
+            // Let's redirect for correctness.
+            // navigate('/pharmacist/scan');
+        }
+    }, [currentPatient, navigate]);
+
+    // Derived State
+    const totalAmount = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // --- ACTIONS ---
+
+    const handleScanMedicine = (medId) => {
+        setIsScanning(true);
+        setTimeout(() => {
+            const med = inventory.find(m => m.id === medId);
+            if (med) {
+                addToBill(med, 1);
+                setScanMessage(`Scanned: ${med.name}`);
+            } else {
+                setScanMessage('Medicine not found');
+            }
+            setIsScanning(false);
+            setTimeout(() => setScanMessage(''), 2000);
+        }, 800);
+    };
+
+    const addToBill = (med, qty, prescriptionId = null, medRx = null) => {
+        setBillItems(prev => {
+            // Check if already in bill (Same Item AND Same Prescription Context)
+            const existingIndex = prev.findIndex(item => item.id === med.id && item.prescriptionId === prescriptionId);
+            if (existingIndex > -1) {
+                const newItems = [...prev];
+                const existingItem = newItems[existingIndex];
+
+                // VALIDATION: Stock
+                if (existingItem.quantity + qty > med.stock) {
+                    alert(`Not enough stock! Max: ${med.stock}`);
+                    return prev;
+                }
+
+                // VALIDATION: Prescription Limit
+                if (prescriptionId && medRx) {
+                    const totalRequested = existingItem.quantity + qty;
+                    const remainingAllowed = medRx.maxQty - medRx.dispensed;
+                    if (totalRequested > remainingAllowed) {
+                        alert(`Cannot exceed prescribed quantity. Limit: ${remainingAllowed} more.`);
+                        return prev;
+                    }
+                }
+
+                newItems[existingIndex].quantity += qty;
+                return newItems;
+            } else {
+                // New Item
+                // VALIDATION: Stock
+                if (qty > med.stock) {
+                    alert(`Not enough stock! Max: ${med.stock}`);
+                    return prev;
+                }
+
+                return [...prev, { ...med, quantity: qty, prescriptionId }];
+            }
+        });
+    };
+
+    const updateQuantity = (itemId, prescriptionId, newQty) => {
+        if (newQty < 1) {
+            removeFromBill(itemId, prescriptionId);
+            return;
+        }
+
+        setBillItems(prev => prev.map(item => {
+            // Match by ID AND PrescriptionID
+            if (item.id === itemId && item.prescriptionId === prescriptionId) {
+                // Find Constraints
+                const med = inventory.find(m => m.id === itemId);
+
+                // 1. Stock Constraint
+                if (newQty > med.stock) {
+                    alert(`Max stock available is ${med.stock}`);
+                    return item; // No change
+                }
+
+                // 2. Prescription Constraint
+                if (item.prescriptionId && currentPatient) {
+                    const rx = currentPatient.prescriptions.find(r => r.id === item.prescriptionId);
+                    const medRx = rx?.medicines.find(m => m.medicineId === itemId);
+                    if (medRx) {
+                        const maxAllowed = medRx.maxQty - medRx.dispensed;
+                        if (newQty > maxAllowed) {
+                            // Use toast or alert
+                            return item; // No change
+                        }
+                    }
+                }
+
+                return { ...item, quantity: newQty };
+            }
+            return item;
+        }));
+    };
+
+    const removeFromBill = (itemId, prescriptionId) => {
+        setBillItems(prev => prev.filter(i => !(i.id === itemId && i.prescriptionId === prescriptionId)));
+    };
+
+    const handleCheckout = () => {
+        // Process all items
+        billItems.forEach(item => {
+            dispenseItem(item.id, item.quantity, item.prescriptionId);
+        });
+        setShowConfirm(true);
+    };
+
+    const finishSession = () => {
+        setShowConfirm(false);
+        setBillItems([]);
+        clearSession();
+        navigate('/pharmacist/scan');
+    };
+
+
+    // --- RENDER HELPERS ---
+
+    const PrescriptionModal = () => {
+        if (!selectedPrescription) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="bg-white rounded-2xl w-full max-w-md overflow-hidden max-h-[80vh] flex flex-col"
+                >
+                    <div className="bg-teal-600 p-4 text-white flex justify-between items-center">
+                        <div>
+                            <h3 className="font-bold">Prescription #{selectedPrescription.id}</h3>
+                            <p className="text-xs opacity-80">Dr. {selectedPrescription.doctor}</p>
+                        </div>
+                        <button onClick={() => setSelectedPrescription(null)}><X /></button>
+                    </div>
+
+                    <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                        {selectedPrescription.medicines.map(medRx => {
+                            const medInfo = inventory.find(m => m.id === medRx.medicineId);
+                            const remaining = medRx.maxQty - medRx.dispensed;
+                            const isFullyDispensed = remaining <= 0;
+                            const inCart = billItems.find(i => i.id === medRx.medicineId && i.prescriptionId === selectedPrescription.id);
+                            const currentQty = inCart ? inCart.quantity : 0;
+
+                            if (isFullyDispensed) return null; // Don't show fully dispensed items? Or show as completed? Requirement says "Expired prescriptions must NOT appear". Assume filled meds in pending Rx should effectively be disabled or hidden. Let's hide them to keep it clean.
+
+                            return (
+                                <div key={medRx.medicineId} className="border border-slate-200 rounded-xl p-3">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-bold text-slate-800">{medRx.name}</h4>
+                                        <Badge variant={isFullyDispensed ? "secondary" : "outline"} className={isFullyDispensed ? "bg-slate-100" : "text-teal-700 bg-teal-50"}>
+                                            {medInfo ? `₹${medInfo.price}` : 'N/A'}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mb-3">{medRx.dosage} • {medRx.days} Days</p>
+
+                                    <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                            Max: {remaining}
+                                        </span>
+
+                                        <div className="flex items-center gap-3">
+                                            {currentQty > 0 ? (
+                                                <>
+                                                    <button onClick={() => updateQuantity(medRx.medicineId, currentQty - 1)} className="w-8 h-8 rounded-full bg-white border shadow-sm flex items-center justify-center text-slate-600"><Minus size={16} /></button>
+                                                    <span className="font-bold w-4 text-center">{currentQty}</span>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (currentQty < remaining) updateQuantity(medRx.medicineId, currentQty + 1);
+                                                        }}
+                                                        disabled={currentQty >= remaining}
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm ${currentQty >= remaining ? 'bg-slate-300' : 'bg-teal-600'}`}
+                                                    >
+                                                        <Plus size={16} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <Button size="sm" onClick={() => addToBill(medInfo, 1, selectedPrescription.id, medRx)} disabled={!medInfo || medInfo.stock === 0} className="bg-teal-600 h-8 text-xs">
+                                                    Add
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </motion.div>
+            </div>
+        );
+    };
+
+    if (showConfirm) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-green-50 p-6 flex-col text-center">
+                <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                    <CheckCircle2 size={48} />
+                </motion.div>
+                <h2 className="text-2xl font-bold text-teal-900 mb-2">Dispense Complete</h2>
+                <p className="text-slate-600 mb-8">Stock updated and transaction recorded.</p>
+                <Button onClick={finishSession} size="lg" className="w-full bg-teal-700">Next Patient</Button>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen pb-24 bg-slate-50">
+            {/* Top Patient Bar */}
+            <div className="bg-white p-4 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="font-bold text-slate-800">{currentPatient?.name || 'Walk-in Customer'}</h2>
+                        <p className="text-xs text-slate-500">{currentPatient ? `ID: ${currentPatient.id}` : 'General Sale'}</p>
+                    </div>
+                    {currentPatient && (
+                        <div className="w-10 h-10 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-bold">
+                            {currentPatient.age}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+
+                {/* Left Panel: Medicine Scan & Cart */}
+                <div className="space-y-4">
+                    {/* Mock Scanner */}
+                    <Card
+                        className="bg-slate-900 text-white p-6 rounded-2xl flex flex-col items-center justify-center h-48 cursor-pointer relative overflow-hidden"
+                        onClick={() => handleScanMedicine(inventory[0]?.id)} // Quick mock scan first item on click
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-purple-500/20"></div>
+                        <ScanLine size={48} className={`mb-4 ${isScanning ? 'animate-pulse text-teal-400' : 'text-slate-400'}`} />
+                        <p className="font-medium z-10">{isScanning ? 'Scanning...' : 'Tap to Simulate Scan'}</p>
+                        <p className="text-xs text-slate-400 z-10 mt-2">Simulates scanning any medicine box</p>
+
+                        {scanMessage && (
+                            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="absolute bottom-4 bg-black/80 px-4 py-2 rounded-full text-xs font-bold text-green-400">
+                                {scanMessage}
+                            </motion.div>
+                        )}
+
+                        {/* Hidden triggers for other meds */}
+
+                    </Card>
+
+                    {/* Current Dispense List (Cart) */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="font-bold flex items-center gap-2 text-slate-700">
+                                <ShoppingCart size={18} /> Dispensing
+                            </h3>
+                            <span className="text-xs font-bold bg-teal-100 text-teal-700 px-2 py-1 rounded">
+                                {billItems.length} Items
+                            </span>
+                        </div>
+
+                        <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
+                            {billItems.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 text-sm">
+                                    No medicines scanned yet.
+                                </div>
+                            ) : (
+                                billItems.map(item => (
+                                    <div key={item.id} className="p-4 flex items-center justify-between">
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {item.prescriptionId ? 'Rx Item' : 'OTC'} • ₹{item.price * item.quantity}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={() => updateQuantity(item.id, item.prescriptionId, item.quantity - 1)} className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200"><Minus size={12} /></button>
+                                            <span className="font-mono font-bold text-sm w-4 text-center">{item.quantity}</span>
+                                            <button onClick={() => updateQuantity(item.id, item.prescriptionId, item.quantity + 1)} className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200"><Plus size={12} /></button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-100">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-slate-500">Total</span>
+                                <span className="text-xl font-bold text-slate-900">₹{totalAmount}</span>
+                            </div>
+                            <Button className="w-full bg-teal-700 hover:bg-teal-800 font-bold h-12" disabled={billItems.length === 0} onClick={handleCheckout}>
+                                Confirm Dispense
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Panel: Prescriptions */}
+                <div>
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">Prescriptions</h3>
+
+                    {!currentPatient ? (
+                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-orange-700 text-sm">
+                            <AlertCircle size={16} className="inline mr-2" />
+                            Use "Walk-in" mode for OTC. To see prescriptions, please scan Patient ID first.
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {currentPatient.prescriptions
+                                .filter(rx => rx.status !== 'completed')
+                                .map(rx => (
+                                    <div
+                                        key={rx.id}
+                                        onClick={() => setSelectedPrescription(rx)}
+                                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-teal-300 hover:shadow-md transition-all cursor-pointer group"
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 group-hover:text-teal-700">#{rx.id}</h4>
+                                                <p className="text-xs text-slate-500">{rx.date} • Dr. {rx.doctor}</p>
+                                            </div>
+                                            <ChevronRight className="text-slate-300 group-hover:text-teal-500" />
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {rx.medicines.map((m, i) => {
+                                                const remaining = m.maxQty - m.dispensed;
+                                                if (remaining <= 0) return null;
+                                                return (
+                                                    <Badge key={i} variant="secondary" className="bg-slate-100 text-slate-600 font-normal">
+                                                        {m.name} ({remaining})
+                                                    </Badge>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            {currentPatient.prescriptions.every(rx => rx.status === 'completed') && (
+                                <p className="text-center text-slate-400 py-8 text-sm">
+                                    No pending prescriptions.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+            </div>
+
+            <PrescriptionModal />
+        </div>
+    );
+};
+
+export default DispensePage;
