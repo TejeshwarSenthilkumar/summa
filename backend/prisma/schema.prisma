@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles Enum
+enum UserRole {
+  ADMIN
+  NURSE
+  STAFF
+  PHARMACY
+}
+
+// Consent Scopes Enum
+enum ConsentScope {
+  VIEW_MEDICAL_RECORDS
+  VIEW_AADHAAR
+  UPDATE_RECORDS
+}
+
+// User Model
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  auditLogs      AuditLog[]
+  prescriptions  Prescription[]
+  consentsGranted Consent[] @relation("GrantedConsents")
+
+  @@index([email])
+  @@index([role])
+}
+
+// Patient Model (Doctor-Free)
+model Patient {
+  id               String    @id @default(uuid())
+  aadhaarEncrypted Bytes     // AES-256-GCM encrypted Aadhaar
+  aadhaarHash      String    @unique // SHA-256 hash for lookups
+  nameEncrypted    Bytes     // AES-256-GCM encrypted name
+  dobEncrypted     Bytes?    // AES-256-GCM encrypted date of birth
+  phoneEncrypted   Bytes?    // AES-256-GCM encrypted phone
+  addressEncrypted Bytes?    // AES-256-GCM encrypted address
+  consentGiven     Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  prescriptions Prescription[]
+  consents      Consent[]
+
+  @@index([aadhaarHash])
+  @@index([createdAt])
+}
+
+// Consent Management
+model Consent {
+  id        String         @id @default(uuid())
+  patientId String
+  grantedTo String
+  scopes    Json           // Array of ConsentScope
+  expiresAt DateTime
+  revoked   Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Relations
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user    User    @relation("GrantedConsents", fields: [grantedTo], references: [id])
+
+  @@index([patientId])
+  @@index([grantedTo])
+  @@index([expiresAt])
+  @@index([revoked])
+}
+
+// Audit Log Model
+model AuditLog {
+  id               String   @id @default(uuid())
+  userId           String
+  action           String
+  resourceType     String
+  resourceId       String?
+  metadata         Json?
+  timestamp        DateTime @default(now())
+  blockchainTxHash String?  // Optional blockchain transaction hash
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([timestamp])
+}
+
+// Medicine Model
+model Medicine {
+  id            String   @id @default(uuid())
+  name          String
+  manufacturer  String
+  batchNumber   String   @unique
+  blockchainId  String?  @unique // On-chain medicine ID
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  prescriptionMedicines PrescriptionMedicine[]
+
+  @@index([batchNumber])
+  @@index([blockchainId])
+  @@index([verified])
+}
+
+// Prescription Model
+model Prescription {
+  id          String    @id @default(uuid())
+  patientId   String
+  issuedBy    String    // User ID (NURSE or ADMIN)
+  dispensed   Boolean   @default(false)
+  dispensedAt DateTime?
+  dispensedBy String?   // User ID (PHARMACY)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  patient   Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  issuer    User                   @relation(fields: [issuedBy], references: [id])
+  medicines PrescriptionMedicine[]
+
+  @@index([patientId])
+  @@index([issuedBy])
+  @@index([dispensed])
+  @@index([createdAt])
+}
+
+// Junction table for Prescription-Medicine relationship
+model PrescriptionMedicine {
+  id             String @id @default(uuid())
+  prescriptionId String
+  medicineId     String
+  quantity       Int
+  dosage         String
+
+  // Relations
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicine     Medicine     @relation(fields: [medicineId], references: [id])
+
+  @@unique([prescriptionId, medicineId])
+  @@index([prescriptionId])
+  @@index([medicineId])
+}
